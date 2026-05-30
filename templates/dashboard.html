@@ -2,7 +2,7 @@
 <html>
   <head>
     <title>Dashboard</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
     <link
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=nest_multi_room"
@@ -581,6 +581,7 @@
         padding: 10px 20px;
       }
 
+      /* Existing responsive rules (keep as is) */
       @media (max-width: 768px) {
         .main {
           width: 100vw;
@@ -667,6 +668,77 @@
         }
       }
 
+      /* Additional mobile improvements (new) */
+      @media (max-width: 480px) {
+        .header {
+          padding: 0 12px;
+          gap: 8px;
+        }
+        .admin-badge {
+          padding: 4px 10px;
+          font-size: 10px;
+        }
+        .rooms-header {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 12px;
+        }
+        .create-room-btn {
+          width: 100%;
+          justify-content: center;
+        }
+        .room-item {
+          padding: 14px 16px;
+          margin: 10px 0;
+        }
+        .modalBox {
+          width: 90%;
+          max-width: 300px;
+          margin: 0 16px;
+        }
+        .modalBox input,
+        .modalBox button {
+          font-size: 14px;
+        }
+        .sidePanel-expanded,
+        .sidePanel-collapsed {
+          gap: 8px;
+          margin: 4px;
+        }
+        button {
+          min-height: 44px; /* better touch target */
+        }
+        .icon-btn {
+          min-height: 40px;
+          min-width: 40px;
+        }
+        .content {
+          overflow-y: auto;
+        }
+        .rooms.page {
+          padding: 12px;
+        }
+      }
+
+      /* Very small phones */
+      @media (max-width: 360px) {
+        .user {
+          font-size: 14px;
+        }
+        .admin-badge {
+          display: none; /* optional: hide badge on tiny screens to save space */
+        }
+        .box {
+          padding: 10px;
+        }
+        .big-text {
+          font-size: 20px;
+        }
+        .medium-text {
+          font-size: 14px;
+        }
+      }
+
       .modal {
         position: fixed;
         inset: 0;
@@ -675,6 +747,7 @@
         justify-content: center;
         align-items: center;
         z-index: 999;
+        padding: 16px;
       }
 
       .modalBox {
@@ -682,6 +755,7 @@
         padding: 20px;
         border-radius: 12px;
         width: 300px;
+        max-width: calc(100vw - 32px);
         display: flex;
         flex-direction: column;
         gap: 10px;
@@ -697,11 +771,18 @@
         transition: all 0.2s ease;
         font-weight: 600;
         color: #e7e9f0;
+        word-break: break-word;
       }
 
       .room-item:hover {
         transform: translateX(6px);
         background: rgba(88, 101, 242, 0.25);
+      }
+
+      /* Ensure scrolling works on mobile */
+      .dashboard, .rooms.page {
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
       }
     </style>
   </head>
@@ -876,7 +957,6 @@
 
       function openJoinModal(roomId, roomName) {
         selectedRoomId = roomId;
-        // Admin joins instantly without password modal
         if (isAdmin) {
           socket.emit("join_room", {
             room_id: roomId,

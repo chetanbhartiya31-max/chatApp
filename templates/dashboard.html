@@ -1,0 +1,989 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=nest_multi_room"
+    />
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      input {
+        width: 100%;
+        padding: 12px 16px;
+        font-size: 14px;
+        font-family: "Inter", sans-serif;
+        background: #0d1117;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        color: #e7e9f0;
+        outline: none;
+        transition: all 0.2s ease;
+      }
+
+      input:hover {
+        border-color: rgba(88, 101, 242, 0.5);
+      }
+
+      input:focus {
+        border-color: #5865f2;
+        box-shadow: 0 0 0 3px rgba(88, 101, 242, 0.2);
+      }
+
+      input::placeholder {
+        color: #6b7280;
+      }
+
+      input[type="password"] {
+        letter-spacing: 2px;
+      }
+
+      input[readonly] {
+        background: rgba(13, 17, 23, 0.5);
+        cursor: not-allowed;
+        opacity: 0.7;
+      }
+
+      body {
+        background-color: #0d1117;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        font-family:
+          "Inter",
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          Roboto,
+          Helvetica,
+          Arial,
+          sans-serif;
+        font-size: 16px;
+        font-weight: 400;
+        line-height: 1.5;
+        color: #e7e9f0;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        text-rendering: optimizeLegacy;
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      button {
+        font-family: "Inter", sans-serif;
+        font-weight: 600;
+        font-size: 14px;
+        padding: 10px 18px;
+        border: none;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        background: rgba(56, 91, 145, 0.8);
+        color: white;
+        backdrop-filter: blur(4px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+      }
+
+      button img {
+        width: 20px;
+        height: 20px;
+        filter: invert(1);
+      }
+
+      button:hover {
+        transform: translateY(-2px);
+        filter: brightness(1.05);
+      }
+
+      button:active {
+        transform: translateY(1px);
+      }
+
+      .main {
+        width: 97vw;
+        height: 97vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background-color: transparent;
+        border-radius: 20px;
+        border: none;
+        position: relative;
+        z-index: 1;
+        background: rgba(30, 45, 66, 0.3);
+        backdrop-filter: blur(10px);
+      }
+
+      .container {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .header {
+        width: 98%;
+        height: 70px;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        margin-top: 10px;
+        gap: 20px;
+        background: rgba(22, 27, 34, 0.5);
+        backdrop-filter: blur(10px);
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        padding: 0 20px;
+      }
+
+      .user {
+        font-size: 30px;
+        font-weight: 600;
+        flex: 1;
+      }
+
+      .logo {
+        width: 40px;
+        height: 40px;
+        background: linear-gradient(135deg, #5865f2, #8a9cff);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-left: 0;
+      }
+
+      .admin-badge {
+        background: rgba(239, 68, 68, 0.8);
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: 600;
+        backdrop-filter: blur(4px);
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .grid {
+        position: fixed;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+        background-size: 40px 40px;
+        z-index: -2;
+        opacity: 0.5;
+      }
+
+      .bg {
+        position: fixed;
+        inset: 0;
+        background:
+          radial-gradient(
+            circle at var(--x) var(--y),
+            rgba(88, 101, 242, 0.25),
+            transparent 25%
+          ),
+          linear-gradient(135deg, #0d1117, #161b22, #111827);
+        z-index: -3;
+        transition: 0.12s;
+      }
+
+      .orb {
+        position: fixed;
+        width: 500px;
+        height: 500px;
+        border-radius: 50%;
+        filter: blur(120px);
+        opacity: 0.22;
+        z-index: -1;
+        animation: float 10s infinite alternate ease-in-out;
+      }
+
+      .orb1 {
+        background: #5865f2;
+        top: -180px;
+        left: -120px;
+      }
+
+      .orb2 {
+        background: #00c8ff;
+        bottom: -180px;
+        right: -120px;
+        animation-delay: 2s;
+      }
+
+      @keyframes float {
+        from {
+          transform: translateY(-30px);
+        }
+        to {
+          transform: translateY(40px);
+        }
+      }
+
+      .sidePanel-expanded {
+        width: 200px;
+        background: rgba(22, 27, 34, 0.5);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 20px;
+        margin: 10px;
+        padding: 10px;
+        justify-content: flex-start;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      .sidePanel-collapsed {
+        width: 60px;
+        background: rgba(22, 27, 34, 0.5);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 20px;
+        margin: 10px;
+        padding: 10px;
+        justify-content: flex-start;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .content {
+        display: flex;
+        flex: 1;
+        flex-direction: row;
+        width: 100%;
+        align-items: stretch;
+        min-height: 0;
+      }
+
+      .sidePanelbtn-expanded,
+      .sidePanelbtn-collapsed {
+        width: 80%;
+        margin: 0;
+        align-self: center;
+      }
+
+      .box {
+        width: auto;
+        min-width: 150px;
+        height: auto;
+        min-height: 150px;
+        background: rgba(22, 27, 34, 0.5);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 20px;
+        margin: 0;
+        padding: 15px;
+        display: flex;
+        flex-direction: column;
+        text-align: center;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      .box:hover {
+        transform: scale(1.05);
+      }
+
+      .dashboard {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 50px;
+        padding: 10px;
+        flex: 1;
+        width: 100%;
+      }
+
+      h1,
+      h2,
+      h3,
+      h4,
+      h5,
+      h6 {
+        font-family: "Inter", sans-serif;
+        font-weight: 700;
+        margin: 0 0 12px 0;
+        color: white;
+        letter-spacing: -0.02em;
+        background: linear-gradient(135deg, #ffffff, #a0a8ff);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+
+      h1 {
+        font-size: 32px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+      }
+
+      h2 {
+        font-size: 24px;
+        font-weight: 700;
+        border-left: 3px solid #5865f2;
+        padding-left: 12px;
+      }
+
+      h3 {
+        font-size: 20px;
+        font-weight: 600;
+        color: #e7e9f0;
+      }
+
+      h4 {
+        font-size: 18px;
+        font-weight: 600;
+        color: #b9bbbe;
+      }
+
+      h5 {
+        font-size: 16px;
+        font-weight: 600;
+        color: #9ca3af;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      h6 {
+        font-size: 14px;
+        font-weight: 600;
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      p {
+        font-family: "Inter", sans-serif;
+        font-size: 15px;
+        font-weight: 400;
+        line-height: 1.6;
+        color: #dbdee5;
+        margin: 0 0 16px 0;
+      }
+
+      small,
+      .text-small {
+        font-size: 12px;
+        font-weight: 400;
+        color: #9ca3af;
+        line-height: 1.4;
+      }
+
+      .text-large {
+        font-size: 18px;
+        font-weight: 400;
+        line-height: 1.5;
+        color: #e7e9f0;
+      }
+
+      strong,
+      b {
+        font-weight: 700;
+        color: white;
+      }
+
+      em,
+      i {
+        font-style: italic;
+        color: #b9bbbe;
+      }
+
+      a {
+        color: #8a9cff;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        font-weight: 500;
+      }
+
+      a:hover {
+        color: #5865f2;
+        text-decoration: underline;
+      }
+
+      blockquote {
+        border-left: 3px solid #5865f2;
+        padding: 8px 0 8px 16px;
+        margin: 16px 0;
+        background: rgba(88, 101, 242, 0.08);
+        border-radius: 0 12px 12px 0;
+        font-style: italic;
+        color: #b9bbbe;
+      }
+
+      code {
+        font-family: "Courier New", monospace;
+        background: rgba(13, 17, 23, 0.8);
+        padding: 2px 6px;
+        border-radius: 6px;
+        font-size: 13px;
+        color: #8a9cff;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+      }
+
+      pre {
+        background: #0d1117;
+        padding: 16px;
+        border-radius: 12px;
+        overflow-x: auto;
+        margin: 16px 0;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+      }
+
+      pre code {
+        background: none;
+        padding: 0;
+        border: none;
+        color: #e7e9f0;
+      }
+
+      ul,
+      ol {
+        margin: 0 0 16px 0;
+        padding-left: 24px;
+        color: #dbdee5;
+        line-height: 1.6;
+      }
+
+      li {
+        margin: 4px 0;
+      }
+
+      hr {
+        border: none;
+        height: 1px;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(255, 255, 255, 0.1),
+          transparent
+        );
+        margin: 20px 0;
+      }
+
+      .text-primary {
+        color: #8a9cff;
+      }
+      .text-success {
+        color: #4ade80;
+      }
+      .text-danger {
+        color: #f87171;
+      }
+      .text-warning {
+        color: #fbbf24;
+      }
+      .text-muted {
+        color: #6b7280;
+      }
+      .text-white {
+        color: white;
+      }
+      .text-left {
+        text-align: left;
+      }
+      .text-center {
+        text-align: center;
+      }
+      .text-right {
+        text-align: right;
+      }
+      .text-truncate {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .line-clamp-1 {
+        display: -webkit-box;
+        -webkit-line-clamp: 1;
+        line-clamp: 1;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      .line-clamp-2 {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      .line-clamp-3 {
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+
+      .big-text {
+        font-size: 36px;
+        font-weight: 800;
+      }
+
+      .medium-text {
+        font-size: 20px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+
+      .page {
+        transition: all 0.3s ease;
+      }
+
+      .rooms.page {
+        display: none;
+        padding: 20px;
+        flex: 1;
+      }
+
+      .icon-btn {
+        padding: 10px !important;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .icon-btn img {
+        width: 24px;
+        height: 24px;
+        filter: invert(1);
+      }
+
+      .rooms-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+      }
+
+      .create-room-btn {
+        background: linear-gradient(135deg, #5865f2, #8a9cff);
+        padding: 10px 20px;
+      }
+
+      @media (max-width: 768px) {
+        .main {
+          width: 100vw;
+          height: 100vh;
+          border-radius: 0;
+          margin: 0;
+        }
+
+        .content {
+          flex-direction: column;
+          gap: 10px;
+        }
+
+        .sidePanel-expanded,
+        .sidePanel-collapsed {
+          width: auto;
+          flex-direction: row;
+          justify-content: center;
+          gap: 10px;
+          margin: 5px;
+          padding: 8px;
+        }
+
+        .sidePanelbtn-expanded,
+        .sidePanelbtn-collapsed {
+          width: auto;
+          padding: 8px 12px;
+          font-size: 12px;
+        }
+
+        .dashboard {
+          grid-template-columns: 1fr;
+          gap: 15px;
+          padding: 5px;
+          overflow-y: auto;
+        }
+
+        .header {
+          width: 95%;
+          height: 55px;
+          gap: 10px;
+          margin-top: 8px;
+        }
+
+        .logo {
+          width: 35px;
+          height: 35px;
+          font-size: 18px;
+          margin-left: 8px;
+        }
+
+        .user {
+          font-size: 18px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .box {
+          padding: 12px;
+          min-height: auto;
+        }
+
+        .box:hover {
+          transform: scale(1.02);
+        }
+
+        .big-text {
+          font-size: 24px;
+        }
+
+        .medium-text {
+          font-size: 16px;
+        }
+
+        h2 {
+          font-size: 18px;
+        }
+
+        .orb,
+        .orb1,
+        .orb2 {
+          opacity: 0.1;
+        }
+      }
+
+      .modal {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 999;
+      }
+
+      .modalBox {
+        background: #161b22;
+        padding: 20px;
+        border-radius: 12px;
+        width: 300px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .room-item {
+        padding: 12px 16px;
+        margin: 8px 0;
+        background: rgba(88, 101, 242, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-weight: 600;
+        color: #e7e9f0;
+      }
+
+      .room-item:hover {
+        transform: translateX(6px);
+        background: rgba(88, 101, 242, 0.25);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="bg"></div>
+    <div class="grid"></div>
+    <div class="orb orb1"></div>
+    <div class="orb orb2"></div>
+
+    <div class="main">
+      <div class="container">
+        <div class="header">
+          <div class="logo">C</div>
+          <div class="user">Welcome back, {{ username }}.</div>
+          {% if is_admin %}
+          <div class="admin-badge">🛡️ ADMIN</div>
+          {% endif %}
+        </div>
+        <div class="content">
+          <div class="sidePanel-expanded" id="sidePanel">
+            <button
+              onclick="toggleSidePanel()"
+              id="toggleSidePanel"
+              class="sidePanelbtn-expanded icon-btn"
+            >
+              <img
+                id="toggleIcon"
+                src="https://cdn-icons-png.flaticon.com/512/56/56763.png"
+                alt="Toggle"
+              />
+            </button>
+            <button
+              class="sidePanelbtn-expanded"
+              id="dashboardBtn"
+              onclick="togglePage('dashboard')"
+            >
+              📊 Dashboard
+            </button>
+            <button
+              class="sidePanelbtn-expanded"
+              id="roomsBtn"
+              onclick="togglePage('rooms')"
+            >
+              💬 Rooms
+            </button>
+          </div>
+
+          <div class="dashboard page" id="dashboardPage">
+            <div class="created_at box">
+              <h2>
+                <span class="big-text">Account created</span><br />{{ created_at
+                }}
+              </h2>
+            </div>
+            <div class="created_for box">
+              <h2>
+                <span class="big-text">Created for</span><br />{{ created_for }}
+                days.
+              </h2>
+            </div>
+            <div class="msgSent box">
+              <h2>
+                <span class="big-text">Messages Sent</span><br /><span
+                  class="medium-text"
+                  >{{ messages_sent }} 📤</span
+                >
+              </h2>
+            </div>
+            <div class="roomsJoined box">
+              <h2>
+                <span class="big-text">Rooms Joined</span><br />{{ rooms_joined
+                }}
+                <span class="material-symbols-outlined">nest_multi_room</span>
+              </h2>
+            </div>
+          </div>
+
+          <div class="rooms page" id="roomsPage" style="display: none">
+            <div class="box" style="min-height: auto; text-align: left">
+              <div class="rooms-header">
+                <h2><span class="big-text">📋 Available Rooms</span></h2>
+                <button class="create-room-btn" onclick="openCreateRoomModal()">
+                  ✨ Create Room
+                </button>
+              </div>
+            </div>
+            <div class="container2"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Join Room Modal (for non‑admin users) -->
+    <div id="joinModal" class="modal">
+      <div class="modalBox">
+        <h2>Join Room</h2>
+        <p id="roomInfo"></p>
+        <input id="roomIdInput" placeholder="Room ID" readonly />
+        <input id="passwordInput" placeholder="Password" type="password" />
+        <button onclick="joinRoom()">Join</button>
+        <button onclick="closeModal()">Cancel</button>
+      </div>
+    </div>
+
+    <!-- Create Room Modal -->
+    <div id="createRoomModal" class="modal">
+      <div class="modalBox">
+        <h2>Create New Room</h2>
+        <input id="roomNameInput" placeholder="Room Name" type="text" />
+        <input
+          id="roomPasswordInput"
+          placeholder="Room Password"
+          type="password"
+        />
+        <button onclick="createRoom()">Create</button>
+        <button onclick="closeCreateRoomModal()">Cancel</button>
+      </div>
+    </div>
+
+    <script>
+      const socket = io();
+      // Get admin status from Flask template
+      const isAdmin = JSON.parse("{{ is_admin|tojson|safe }}");
+
+      document.addEventListener("mousemove", (e) => {
+        document.body.style.setProperty("--x", e.clientX + "px");
+        document.body.style.setProperty("--y", e.clientY + "px");
+      });
+
+      function toggleSidePanel() {
+        const sidePanel = document.getElementById("sidePanel");
+        const toggleIcon = document.getElementById("toggleIcon");
+        const roomsBtn = document.getElementById("roomsBtn");
+        const dashboardBtn = document.getElementById("dashboardBtn");
+
+        if (sidePanel.classList.contains("sidePanel-expanded")) {
+          sidePanel.classList.remove("sidePanel-expanded");
+          sidePanel.classList.add("sidePanel-collapsed");
+          toggleIcon.src =
+            "https://cdn-icons-png.flaticon.com/512/56/56763.png";
+          roomsBtn.style.display = "none";
+          dashboardBtn.style.display = "none";
+          roomsBtn.classList.add("icon-btn");
+          dashboardBtn.classList.add("icon-btn");
+        } else {
+          sidePanel.classList.remove("sidePanel-collapsed");
+          sidePanel.classList.add("sidePanel-expanded");
+          toggleIcon.src =
+            "https://cdn-icons-png.flaticon.com/512/56/56763.png";
+          roomsBtn.style.display = "flex";
+          dashboardBtn.style.display = "flex";
+          roomsBtn.classList.remove("icon-btn");
+          dashboardBtn.classList.remove("icon-btn");
+        }
+      }
+
+      function togglePage(pageName) {
+        const dashboardPage = document.getElementById("dashboardPage");
+        const roomsPage = document.getElementById("roomsPage");
+
+        if (pageName === "dashboard") {
+          dashboardPage.style.display = "grid";
+          roomsPage.style.display = "none";
+        } else if (pageName === "rooms") {
+          dashboardPage.style.display = "none";
+          roomsPage.style.display = "block";
+          showRooms();
+        }
+      }
+
+      let selectedRoomId = null;
+
+      function openJoinModal(roomId, roomName) {
+        selectedRoomId = roomId;
+        // Admin joins instantly without password modal
+        if (isAdmin) {
+          socket.emit("join_room", {
+            room_id: roomId,
+            password: "",
+          });
+        } else {
+          document.getElementById("joinModal").style.display = "flex";
+          document.getElementById("roomIdInput").value = roomId;
+          document.getElementById("roomInfo").innerText =
+            "Joining #" + roomName;
+        }
+      }
+
+      function closeModal() {
+        document.getElementById("joinModal").style.display = "none";
+        document.getElementById("passwordInput").value = "";
+      }
+
+      function joinRoom() {
+        const password = document.getElementById("passwordInput").value;
+        socket.emit("join_room", {
+          room_id: selectedRoomId,
+          password: password,
+        });
+        closeModal();
+      }
+
+      function openCreateRoomModal() {
+        document.getElementById("createRoomModal").style.display = "flex";
+      }
+
+      function closeCreateRoomModal() {
+        document.getElementById("createRoomModal").style.display = "none";
+        document.getElementById("roomNameInput").value = "";
+        document.getElementById("roomPasswordInput").value = "";
+      }
+
+      async function createRoom() {
+        const name = document.getElementById("roomNameInput").value.trim();
+        const password = document.getElementById("roomPasswordInput").value;
+
+        if (!name || name.length < 3 || name.length > 30) {
+          alert("Room name must be between 3 and 30 characters");
+          return;
+        }
+
+        if (!password || password.length < 3) {
+          alert("Password must be at least 3 characters");
+          return;
+        }
+
+        try {
+          const response = await fetch("/create/rooms", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ name: name, password: password }),
+          });
+
+          const data = await response.json();
+
+          if (response.ok) {
+            alert(`Room "${name}" created successfully!`);
+            closeCreateRoomModal();
+            showRooms();
+          } else {
+            alert(data.message || "Failed to create room");
+          }
+        } catch (error) {
+          console.error("Error creating room:", error);
+          alert("Network error - could not create room");
+        }
+      }
+
+      async function showRooms() {
+        try {
+          const response = await fetch("/rooms");
+          const rooms = await response.json();
+
+          const container = document.querySelector(".container2");
+          container.innerHTML = "";
+
+          rooms.forEach((room) => {
+            const el = document.createElement("p");
+            el.innerText = "#" + room.name;
+            el.classList.add("room-item");
+            el.onclick = () => openJoinModal(room.id, room.name);
+            container.appendChild(el);
+          });
+        } catch (error) {
+          console.error("Error loading rooms:", error);
+        }
+      }
+
+      window.onload = () => {
+        showRooms();
+      };
+
+      socket.on("error", (data) => {
+        alert(data.message);
+        closeModal();
+      });
+
+      socket.on("join_success", () => {
+        window.location.href = `/room/${selectedRoomId}`;
+      });
+    </script>
+  </body>
+</html>

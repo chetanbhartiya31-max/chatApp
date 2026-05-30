@@ -1,0 +1,394 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Authentication</title>
+
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: Inter, sans-serif;
+      }
+
+      body {
+        background: #0d1117;
+        overflow: hidden;
+        height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        color: white;
+      }
+
+      .bg {
+        position: fixed;
+        inset: 0;
+        background:
+          radial-gradient(
+            circle at var(--x) var(--y),
+            rgba(88, 101, 242, 0.25),
+            transparent 25%
+          ),
+          linear-gradient(135deg, #0d1117, #161b22, #111827);
+        z-index: -3;
+        transition: 0.12s;
+      }
+
+      .grid {
+        position: fixed;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+        background-size: 40px 40px;
+        z-index: -2;
+        opacity: 0.5;
+      }
+
+      .orb {
+        position: fixed;
+        width: 500px;
+        height: 500px;
+        border-radius: 50%;
+        filter: blur(120px);
+        opacity: 0.22;
+        z-index: -1;
+        animation: float 10s infinite alternate ease-in-out;
+      }
+
+      .orb1 {
+        background: #5865f2;
+        top: -180px;
+        left: -120px;
+      }
+
+      .orb2 {
+        background: #00c8ff;
+        bottom: -180px;
+        right: -120px;
+        animation-delay: 2s;
+      }
+
+      @keyframes float {
+        from {
+          transform: translateY(-30px);
+        }
+        to {
+          transform: translateY(40px);
+        }
+      }
+
+      .container {
+        width: 430px;
+        padding: 38px;
+        background: rgba(22, 27, 34, 0.82);
+        border: 1px solid rgba(255, 255, 255, 0.09);
+        backdrop-filter: blur(22px);
+        border-radius: 28px;
+        box-shadow:
+          0 20px 80px rgba(0, 0, 0, 0.45),
+          0 0 50px rgba(88, 101, 242, 0.12);
+        animation: appear 0.7s ease;
+        position: relative;
+      }
+
+      @keyframes appear {
+        from {
+          opacity: 0;
+          transform: translateY(35px) scale(0.96);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+
+      .logo {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 8px;
+      }
+
+      .logo-circle {
+        width: 48px;
+        height: 48px;
+        border-radius: 14px;
+        background: linear-gradient(135deg, #5865f2, #7f8cff);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-weight: 800;
+        font-size: 20px;
+      }
+
+      h1 {
+        font-size: 2rem;
+        font-weight: 800;
+        margin-bottom: 8px;
+      }
+
+      .subtitle {
+        color: #9ca3af;
+        margin-bottom: 26px;
+        line-height: 1.45;
+      }
+
+      .input-group {
+        position: relative;
+        margin-bottom: 16px;
+      }
+
+      input {
+        width: 100%;
+        padding: 17px 18px;
+        border-radius: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: #0d1117;
+        color: white;
+        font-size: 15px;
+        outline: none;
+        transition: 0.25s;
+      }
+
+      input:focus {
+        border-color: #5865f2;
+        box-shadow: 0 0 0 4px rgba(88, 101, 242, 0.18);
+        transform: translateY(-1px);
+      }
+
+      .actions {
+        display: flex;
+        gap: 14px;
+        margin-top: 10px;
+      }
+
+      button {
+        flex: 1;
+        padding: 15px;
+        border: none;
+        border-radius: 16px;
+        font-size: 15px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: 0.22s;
+      }
+
+      #login {
+        background: #23272f;
+        color: #fff;
+      }
+
+      #signup {
+        background: linear-gradient(135deg, #5865f2, #7289ff);
+        color: white;
+      }
+
+      button:hover {
+        transform: translateY(-3px);
+        filter: brightness(1.08);
+      }
+
+      button:active {
+        transform: scale(0.97);
+      }
+
+      .footer {
+        margin-top: 22px;
+        font-size: 13px;
+        color: #6b7280;
+        text-align: center;
+      }
+
+      .toast-container {
+        position: fixed;
+        top: 22px;
+        right: 22px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        z-index: 1000;
+      }
+
+      .toast {
+        padding: 16px 20px;
+        border-radius: 16px;
+        background: rgba(18, 18, 18, 0.94);
+        border-left: 4px solid #5865f2;
+        color: white;
+        min-width: 320px;
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+        animation: slide 0.35s ease;
+      }
+
+      .toast.success {
+        border-left-color: #22c55e;
+      }
+
+      .toast.error {
+        border-left-color: #ef4444;
+      }
+
+      @keyframes slide {
+        from {
+          opacity: 0;
+          transform: translateX(60px);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="bg"></div>
+    <div class="grid"></div>
+    <div class="orb orb1"></div>
+    <div class="orb orb2"></div>
+
+    <div class="toast-container" id="toasts"></div>
+
+    <div class="container">
+      <div class="logo">
+        <div class="logo-circle">C</div>
+        <div>
+          <h1>Welcome Back</h1>
+        </div>
+      </div>
+
+      <p class="subtitle">
+        Secure sign in & account creation. Your chat world starts here.
+      </p>
+
+      <div class="input-group">
+        <input type="text" id="username" placeholder="Username" />
+      </div>
+
+      <div class="input-group">
+        <input type="email" id="email" placeholder="Email" />
+      </div>
+
+      <div class="input-group">
+        <input type="password" id="password" placeholder="Password" />
+      </div>
+
+      <div class="actions">
+        <button id="login" onclick="login()">Login</button>
+        <button id="signup" onclick="signup()">Sign Up</button>
+      </div>
+
+      <div class="footer">Built with Flask • SocketIO • Pure Chaos™</div>
+    </div>
+
+    <script>
+      document.addEventListener("mousemove", (e) => {
+        document.body.style.setProperty("--x", e.clientX + "px");
+        document.body.style.setProperty("--y", e.clientY + "px");
+      });
+
+      function toast(message, type = "success") {
+        const box = document.createElement("div");
+        box.className = `toast ${type}`;
+        box.textContent = message;
+
+        document.getElementById("toasts").appendChild(box);
+
+        setTimeout(() => {
+          box.remove();
+        }, 4000);
+      }
+
+      async function signup() {
+        const username = document.getElementById("username").value;
+        const email = document.getElementById("email").value;
+        const password = document.getElementById("password").value;
+
+        if (
+          !username ||
+          !email ||
+          !password ||
+          username.trim() == "" ||
+          email.trim() == "" ||
+          password.trim() == ""
+        ) {
+          toast("Please enter all fields correctly", "error");
+          return;
+        }
+
+        const response = await fetch("/auth/signup", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            username: username,
+            email: email,
+            password: password,
+          }),
+        });
+
+        const data = await response.json();
+
+        document.getElementById("username").value = "";
+        document.getElementById("email").value = "";
+        document.getElementById("password").value = "";
+
+        if (data.message) {
+          toast(data.message, "error");
+        } else {
+          name = data.user;
+          datecreated = data.created_at;
+
+          toast(` Welcome ${name}! Created on ${datecreated}`, "success");
+        }
+      }
+
+      async function login() {
+        const username = document.getElementById("username").value;
+        const password = document.getElementById("password").value;
+
+        if (
+          !username ||
+          !password ||
+          username.trim() == "" ||
+          password.trim() == ""
+        ) {
+          toast("Please enter username and password", "error");
+          return;
+        }
+
+        const response = await fetch("/auth/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            username: username,
+            password: password,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          toast("Login successful. Redirecting...", "success");
+          setTimeout(() => {
+            window.location.href = "/dashboard";
+          }, 1000);
+        } else {
+          toast(data.message, "error");
+        }
+      }
+    </script>
+  </body>
+</html>

@@ -8,14 +8,28 @@ from functools import wraps
 
 app = Flask(__name__)
 
-# Database configuration – use PostgreSQL on Render, SQLite locally
+# ========== DATABASE CONFIGURATION WITH LOGGING ==========
+print("\n" + "=" * 60)
+print("🔧 CHECKING DATABASE CONFIGURATION...")
+print("=" * 60)
+
 database_url = os.environ.get("DATABASE_URL")
-if database_url and database_url.startswith("postgres://"):
+
+if database_url:
+    print(f"✅ DATABASE_URL found: {database_url[:50]}...")
+    
     # Render uses postgres:// but SQLAlchemy requires postgresql://
-    database_url = database_url.replace("postgres://", "postgresql://", 1)
+    if database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql://", 1)
+        print("✅ Converted postgres:// to postgresql://")
+    
     app.config["SQLALCHEMY_DATABASE_URI"] = database_url
+    print("✅ USING POSTGRESQL DATABASE (Data will PERSIST!)")
 else:
     app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///database.db"
+    print("⚠️ USING SQLITE DATABASE (Data will be LOST on restart!)")
+
+print("=" * 60 + "\n")
 
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.secret_key = os.urandom(24)
@@ -73,6 +87,7 @@ with app.app_context():
         )
         db.session.add(global_room)
         db.session.commit()
+        print("✅ Global room created")
 
     # Seed admin user if none exists
     admin_user = User.query.filter_by(is_admin=True).first()

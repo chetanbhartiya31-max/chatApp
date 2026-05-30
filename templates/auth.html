@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
     <title>Authentication</title>
 
     <link
@@ -26,6 +26,7 @@
         justify-content: center;
         align-items: center;
         color: white;
+        padding: 16px;
       }
 
       .bg {
@@ -87,8 +88,10 @@
       }
 
       .container {
-        width: 430px;
-        padding: 38px;
+        width: 100%;
+        max-width: 430px;
+        margin: 0 auto;
+        padding: 32px 24px;
         background: rgba(22, 27, 34, 0.82);
         border: 1px solid rgba(255, 255, 255, 0.09);
         backdrop-filter: blur(22px);
@@ -116,6 +119,7 @@
         align-items: center;
         gap: 12px;
         margin-bottom: 8px;
+        flex-wrap: wrap;
       }
 
       .logo-circle {
@@ -131,7 +135,7 @@
       }
 
       h1 {
-        font-size: 2rem;
+        font-size: 1.8rem;
         font-weight: 800;
         margin-bottom: 8px;
       }
@@ -140,6 +144,7 @@
         color: #9ca3af;
         margin-bottom: 26px;
         line-height: 1.45;
+        font-size: 0.9rem;
       }
 
       .input-group {
@@ -149,7 +154,7 @@
 
       input {
         width: 100%;
-        padding: 17px 18px;
+        padding: 15px 16px;
         border-radius: 16px;
         border: 1px solid rgba(255, 255, 255, 0.08);
         background: #0d1117;
@@ -167,34 +172,35 @@
 
       .actions {
         display: flex;
-        gap: 14px;
+        gap: 12px;
         margin-top: 10px;
+        flex-direction: row;
       }
 
       button {
         flex: 1;
-        padding: 15px;
+        padding: 14px 12px;
         border: none;
         border-radius: 16px;
         font-size: 15px;
         font-weight: 700;
         cursor: pointer;
         transition: 0.22s;
-      }
-
-      #login {
         background: #23272f;
         color: #fff;
       }
 
+      #login {
+        background: #23272f;
+      }
+
       #signup {
         background: linear-gradient(135deg, #5865f2, #7289ff);
-        color: white;
       }
 
       button:hover {
-        transform: translateY(-3px);
-        filter: brightness(1.08);
+        transform: translateY(-2px);
+        filter: brightness(1.05);
       }
 
       button:active {
@@ -203,30 +209,37 @@
 
       .footer {
         margin-top: 22px;
-        font-size: 13px;
+        font-size: 12px;
         color: #6b7280;
         text-align: center;
       }
 
       .toast-container {
         position: fixed;
-        top: 22px;
-        right: 22px;
+        top: 16px;
+        right: 16px;
+        left: 16px;
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: 10px;
         z-index: 1000;
+        pointer-events: none;
       }
 
       .toast {
-        padding: 16px 20px;
-        border-radius: 16px;
-        background: rgba(18, 18, 18, 0.94);
+        pointer-events: auto;
+        padding: 14px 18px;
+        border-radius: 14px;
+        background: rgba(18, 18, 18, 0.96);
         border-left: 4px solid #5865f2;
         color: white;
-        min-width: 320px;
-        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+        font-size: 14px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
         animation: slide 0.35s ease;
+        backdrop-filter: blur(8px);
+        width: 100%;
+        max-width: 400px;
+        margin: 0 auto;
       }
 
       .toast.success {
@@ -240,11 +253,92 @@
       @keyframes slide {
         from {
           opacity: 0;
-          transform: translateX(60px);
+          transform: translateX(30px);
         }
         to {
           opacity: 1;
           transform: translateX(0);
+        }
+      }
+
+      /* ========== MOBILE OPTIMIZATIONS ========== */
+      @media (max-width: 480px) {
+        body {
+          padding: 12px;
+        }
+
+        .container {
+          padding: 24px 20px;
+          border-radius: 24px;
+        }
+
+        .logo-circle {
+          width: 40px;
+          height: 40px;
+          font-size: 18px;
+        }
+
+        h1 {
+          font-size: 1.5rem;
+        }
+
+        .subtitle {
+          font-size: 0.85rem;
+          margin-bottom: 20px;
+        }
+
+        input {
+          padding: 14px 15px;
+          font-size: 14px;
+        }
+
+        button {
+          padding: 12px 10px;
+          font-size: 14px;
+        }
+
+        .actions {
+          gap: 10px;
+        }
+
+        .toast {
+          padding: 12px 16px;
+          font-size: 13px;
+        }
+
+        .orb, .orb1, .orb2 {
+          opacity: 0.12;
+          width: 300px;
+          height: 300px;
+          filter: blur(80px);
+        }
+      }
+
+      /* Small phones */
+      @media (max-width: 360px) {
+        .container {
+          padding: 20px 16px;
+        }
+
+        .actions {
+          flex-direction: column;
+          gap: 12px;
+        }
+
+        button {
+          width: 100%;
+        }
+
+        .toast {
+          max-width: calc(100vw - 32px);
+        }
+      }
+
+      /* Tablet landscape */
+      @media (min-width: 481px) and (max-width: 768px) {
+        .container {
+          max-width: 460px;
+          padding: 36px 28px;
         }
       }
     </style>
@@ -346,9 +440,8 @@
         if (data.message) {
           toast(data.message, "error");
         } else {
-          name = data.user;
-          datecreated = data.created_at;
-
+          let name = data.user;
+          let datecreated = data.created_at;
           toast(` Welcome ${name}! Created on ${datecreated}`, "success");
         }
       }

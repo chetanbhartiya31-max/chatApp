@@ -5,8 +5,35 @@ from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 from functools import wraps
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_talisman import Talisman
 
 app = Flask(__name__)
+
+app.config.update(
+    SESSION_COOKIE_SECURE=True,      # Cookies only sent over HTTPS
+    SESSION_COOKIE_HTTPONLY=True,    # JavaScript can't read cookies
+    SESSION_COOKIE_SAMESITE='Lax',   # Prevents CSRF attacks
+    PERMANENT_SESSION_LIFETIME=86400 # Session expires after 24 hours
+)
+
+limiter = Limiter(
+    app,
+    key_func=get_remote_address,
+    default_limits=["200 per day", "50 per hour"]
+)
+
+Talisman(app, 
+    force_https=True,
+    force_https_permanent=True,
+    content_security_policy={
+        'default-src': "'self'",
+        'script-src': ["'self'", "'unsafe-inline'", "https://cdn.socket.io"],
+        'style-src': ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        'font-src': ["'self'", "https://fonts.gstatic.com"],
+    }
+)
 
 # ========== DATABASE CONFIGURATION WITH LOGGING ==========
 print("\n" + "=" * 60)
@@ -154,6 +181,7 @@ def dashboard():
     )
 
 @app.route("/auth/signup", methods=["POST"])
+@limiter.limit("3 per minute")
 def sign_up():
     data = request.get_json()
     if not data:
@@ -195,6 +223,7 @@ def sign_up():
     return jsonify({"user": username, "email": email, "created_at": user.created_at}), 200
 
 @app.route("/auth/login", methods=["POST"])
+@limiter.limit("5 per minute")
 def login():
     data = request.get_json()
     if not data:

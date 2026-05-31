@@ -18,8 +18,9 @@ app.config.update(
     PERMANENT_SESSION_LIFETIME=86400 # Session expires after 24 hours
 )
 
-# ✅ FIXED: Correct Limiter initialization
-limiter = Limiter(app, key_func=get_remote_address, default_limits=["200 per day", "50 per hour"])
+
+# ✅ FIXED: Works with all flask-limiter versions
+limiter = Limiter(key_func=get_remote_address, app=app, default_limits=["200 per day", "50 per hour"])
 
 Talisman(app, 
     force_https=True,

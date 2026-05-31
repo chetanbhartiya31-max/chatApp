@@ -1,27 +1,51 @@
 import os
+import uuid
+import secrets
+import logging
+from logging.handlers import RotatingFileHandler
+from datetime import datetime, timedelta
+from functools import wraps
 from flask import Flask, request, jsonify, session, render_template
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
-from functools import wraps
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_talisman import Talisman
+from flask_cors import CORS
 
 app = Flask(__name__)
 
+# ========== SECURITY LOGGING SETUP ==========
+security_logger = logging.getLogger("security")
+security_logger.setLevel(logging.INFO)
+
+if not os.path.exists('logs'):
+    os.mkdir('logs')
+handler = RotatingFileHandler('logs/security.log', maxBytes=10000000, backupCount=5)
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+security_logger.addHandler(handler)
+
+def log_security_event(event_type, user_id, details, ip_address=None):
+    security_logger.info(f"{event_type} | user:{user_id} | ip:{ip_address or 'unknown'} | {details}")
+
+# ========== APP CONFIGURATION ==========
 app.config.update(
-    SESSION_COOKIE_SECURE=True,      # Cookies only sent over HTTPS
-    SESSION_COOKIE_HTTPONLY=True,    # JavaScript can't read cookies
-    SESSION_COOKIE_SAMESITE='Lax',   # Prevents CSRF attacks
-    PERMANENT_SESSION_LIFETIME=86400 # Session expires after 24 hours
+    SESSION_COOKIE_SECURE=True,
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE='Lax',
+    PERMANENT_SESSION_LIFETIME=86400
 )
 
+# ========== CORS CONFIGURATION ==========
+ALLOWED_ORIGINS = os.environ.get("ALLOWED_ORIGINS", "https://discord1-5oxx.onrender.com").split(",")
+CORS(app, origins=ALLOWED_ORIGINS, supports_credentials=True)
 
-# ✅ FIXED: Works with all flask-limiter versions
+# ========== RATE LIMITING ==========
 limiter = Limiter(key_func=get_remote_address, app=app, default_limits=["200 per day", "50 per hour"])
 
+# ========== SECURITY HEADERS (TALISMAN) ==========
 Talisman(app, 
     force_https=True,
     force_https_permanent=True,
@@ -30,41 +54,28 @@ Talisman(app,
         'script-src': ["'self'", "'unsafe-inline'", "https://cdn.socket.io"],
         'style-src': ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         'font-src': ["'self'", "https://fonts.gstatic.com"],
-        'img-src': ["'self'", "data:", "https://cdn-icons-png.flaticon.com"],  # ✅ ADD THIS LINE
+        'img-src': ["'self'", "data:", "https://cdn-icons-png.flaticon.com"],
     }
 )
 
-# ========== DATABASE CONFIGURATION WITH LOGGING ==========
-print("\n" + "=" * 60)
-print("🔧 CHECKING DATABASE CONFIGURATION...")
-print("=" * 60)
-
+# ========== DATABASE CONFIGURATION ==========
 database_url = os.environ.get("DATABASE_URL")
-
 if database_url:
-    print(f"✅ DATABASE_URL found: {database_url[:50]}...")
-    
-    # Render uses postgres:// but SQLAlchemy requires postgresql://
     if database_url.startswith("postgres://"):
         database_url = database_url.replace("postgres://", "postgresql://", 1)
-        print("✅ Converted postgres:// to postgresql://")
-    
     app.config["SQLALCHEMY_DATABASE_URI"] = database_url
-    print("✅ USING POSTGRESQL DATABASE (Data will PERSIST!)")
+    print("✅ USING POSTGRESQL DATABASE")
 else:
     app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///database.db"
-    print("⚠️ USING SQLITE DATABASE (Data will be LOST on restart!)")
-
-print("=" * 60 + "\n")
+    print("⚠️ USING SQLITE DATABASE")
 
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.secret_key = os.environ.get("SECRET_KEY")
 
-socketio = SocketIO(app, cors_allowed_origins="*", manage_session=True)
-
+socketio = SocketIO(app, cors_allowed_origins=ALLOWED_ORIGINS, manage_session=True)
 db = SQLAlchemy(app)
 
-# ------------------------- Models -------------------------
+# ========== MODELS ==========
 user_rooms = db.Table(
     "user_rooms",
     db.Column("user_id", db.Integer, db.ForeignKey("user.id")),
@@ -81,6 +92,9 @@ class User(db.Model):
     email_valadity = db.Column(db.Boolean, default=True)
     messages_sent = db.Column(db.Integer, default=0)
     rooms_joined = db.Column(db.Integer, default=0)
+    # Account lockout fields
+    failed_attempts = db.Column(db.Integer, default=0)
+    locked_until = db.Column(db.DateTime, nullable=True)
     messages = db.relationship("Messages", backref="user")
     rooms = db.relationship("Room", secondary=user_rooms, backref="users")
 
@@ -96,13 +110,37 @@ class Room(db.Model):
     name = db.Column(db.String(30), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.now)
+    room_secret = db.Column(db.String(64), unique=True, default=lambda: secrets.token_urlsafe(32))
     messages = db.relationship("Messages", backref="room")
 
-# ------------------------- Create tables & seed admin -------------------------
+# ========== HELPER FUNCTIONS ==========
+def check_account_lock(user):
+    if user.locked_until and user.locked_until > datetime.now():
+        return True
+    if user.locked_until and user.locked_until <= datetime.now():
+        user.locked_until = None
+        user.failed_attempts = 0
+        db.session.commit()
+    return False
+
+def record_failed_attempt(user):
+    user.failed_attempts += 1
+    if user.failed_attempts >= 5:
+        user.locked_until = datetime.now() + timedelta(minutes=15)
+    db.session.commit()
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get("user_id"):
+            return jsonify(message="Not logged in"), 401
+        return f(*args, **kwargs)
+    return decorated_function
+
+# ========== CREATE TABLES & SEED ADMIN ==========
 with app.app_context():
     db.create_all()
 
-    # Create global room if not exists
     global_room = Room.query.get(1)
     if global_room is None:
         global_room = Room(
@@ -115,7 +153,6 @@ with app.app_context():
         db.session.commit()
         print("✅ Global room created")
 
-    # Seed admin user if none exists
     admin_user = User.query.filter_by(is_admin=True).first()
     if not admin_user:
         admin = User(
@@ -132,7 +169,7 @@ with app.app_context():
         db.session.commit()
         print("✅ Admin user created: username='admin', password='chetan1man@'")
 
-# ------------------------- Admin decorator -------------------------
+# ========== ADMIN DECORATOR ==========
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -145,7 +182,7 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# ------------------------- Routes -------------------------
+# ========== ROUTES ==========
 @app.route("/")
 def main_page():
     return render_template("auth.html")
@@ -155,6 +192,14 @@ def chat_room(room_id):
     user_id = session.get("user_id")
     if not user_id:
         return render_template("auth.html")
+    
+    user = User.query.get(user_id)
+    room = Room.query.get(room_id)
+    
+    # IDOR Protection - Check if user has access to this room
+    if room not in user.rooms and not user.is_admin:
+        return "You don't have access to this room", 403
+    
     return render_template("room.html", room_id=room_id)
 
 @app.route("/dashboard")
@@ -185,19 +230,23 @@ def sign_up():
     data = request.get_json()
     if not data:
         return jsonify(message="No data provided"), 400
+    
     username = data.get("username")
     email = data.get("email")
     password = data.get("password")
+    
     if username is None or len(username) > 30 or len(username) < 3:
         return jsonify(message="Invalid username"), 400
-    if not ("@" in email and email.count("@") == 1 and "." in email and email.count(".") >= 1):
+    if not ("@" in email and email.count("@") == 1 and "." in email):
         return jsonify(message="Invalid email"), 400
     if password is None or len(password) > 30 or len(password) < 6:
         return jsonify(message="Invalid password"), 400
+    
     hashed_password = generate_password_hash(password)
-    if User.query.filter_by(username=username).first() is not None:
+    
+    if User.query.filter_by(username=username).first():
         return jsonify(message="Username already exists"), 400
-    if User.query.filter_by(email=email).first() is not None:
+    if User.query.filter_by(email=email).first():
         return jsonify(message="Email already exists"), 400
 
     user = User(
@@ -219,6 +268,7 @@ def sign_up():
         user.rooms_joined = len(user.rooms)
         db.session.commit()
 
+    log_security_event("ACCOUNT_CREATED", user.id, f"username:{username}", request.remote_addr)
     return jsonify({"user": username, "email": email, "created_at": user.created_at}), 200
 
 @app.route("/auth/login", methods=["POST"])
@@ -227,19 +277,43 @@ def login():
     data = request.get_json()
     if not data:
         return jsonify(message="No data provided"), 400
+    
     username = data.get("username")
     password = data.get("password")
     user = User.query.filter_by(username=username).first()
-    if user is None:
+    
+    # Account lockout check
+    if user and check_account_lock(user):
+        log_security_event("LOCKED_LOGIN_ATTEMPT", user.id, f"Account locked", request.remote_addr)
+        return jsonify(message="Account locked. Try again in 15 minutes."), 403
+    
+    if user is None or not check_password_hash(user.password_hash, password):
+        if user:
+            record_failed_attempt(user)
+            log_security_event("FAILED_LOGIN", user.id, f"username:{username}", request.remote_addr)
+        else:
+            log_security_event("FAILED_LOGIN", "unknown", f"username:{username} (user not found)", request.remote_addr)
         return jsonify(message="Invalid password or username"), 400
-    if not check_password_hash(user.password_hash, password):
-        return jsonify(message="Invalid password or username"), 400
-    if not user.email_valadity:
-        return jsonify(message="Email not validated"), 400
+    
+    # Login successful - reset failed attempts
+    user.failed_attempts = 0
+    user.locked_until = None
+    db.session.commit()
+    
     session["user_id"] = user.id
     session["username"] = user.username
     session["is_admin"] = user.is_admin
+    
+    log_security_event("LOGIN_SUCCESS", user.id, f"username:{username}", request.remote_addr)
     return jsonify(message="User logged in successfully"), 200
+
+@app.route("/auth/logout")
+@login_required
+def logout():
+    user_id = session.get("user_id")
+    log_security_event("LOGOUT", user_id, "User logged out", request.remote_addr)
+    session.clear()
+    return jsonify(message="Logged out successfully"), 200
 
 @socketio.on("send_messages")
 def handle_send_message(data):
@@ -247,50 +321,73 @@ def handle_send_message(data):
     if user_id is None:
         emit("error", {"message": "User not logged in"})
         return
+    
     content = data.get("content")
     room_id = data.get("room_id")
     room = Room.query.get(room_id)
+    
     if room is None:
         emit("error", {"message": "Room not found"})
         return
+    
     if content is None or len(content) > 1000 or len(content) < 1 or content.strip() == "":
         emit("error", {"message": "Invalid message"})
         return
+    
     message = Messages(content=content, user_id=user_id, room_id=room_id, created_at=datetime.now())
     db.session.add(message)
     db.session.commit()
+    
     user = User.query.get(user_id)
     if not user:
         emit("error", {"message": "User not found"})
         return
+    
     user.messages_sent += 1
     db.session.commit()
+    
     emit("new_message", {"username": user.username, "content": message.content, "room_id": room_id}, room=str(room_id))
 
 @app.route("/messages_history", methods=["GET"])
+@login_required
 def get_messages():
-    user_id = session.get("user_id")
-    if not user_id:
-        return jsonify(message="User not logged in"), 400
     room_id = request.args.get("room_id")
+    user = User.query.get(session.get("user_id"))
+    room = Room.query.get(room_id)
+    
+    # IDOR Protection - Check access
+    if room not in user.rooms and not user.is_admin:
+        return jsonify(message="Access denied"), 403
+    
     messages = Messages.query.filter_by(room_id=room_id).all()
     return jsonify(messages=[{"username": message.user.username, "content": message.content} for message in messages if message.user is not None])
 
 @app.route("/rooms")
+@login_required
 def get_rooms():
     rooms = Room.query.all()
-    return jsonify([{"id": r.id, "name": r.name} for r in rooms])
+    user = User.query.get(session.get("user_id"))
+    
+    # Return rooms with access info
+    return jsonify([{
+        "id": r.id, 
+        "name": r.name,
+        "has_access": r in user.rooms or user.is_admin
+    } for r in rooms])
 
 @socketio.on("join_room")
 def handle_join_room(data):
     room_id = data["room_id"]
     password = data.get("password", "")
     user_id = session.get("user_id")
+    
     if not user_id:
         emit("error", {"message": "Not logged in"})
         return
+    
     user = User.query.get(user_id)
     room = Room.query.get(room_id)
+    
     if not room:
         emit("error", {"message": "Room not found"})
         return
@@ -323,37 +420,49 @@ def handle_join_room(data):
 def handle_leave_room(data):
     room_id = data["room_id"]
     user_id = session.get("user_id")
+    
     if user_id is None:
         emit("error", {"message": "User not logged in"})
         return
+    
     user = User.query.get(user_id)
     room = Room.query.get(room_id)
+    
     if not room:
         emit("error", {"message": "Room not found"})
         return
+    
     leave_room(str(room_id))
+    # Note: Not removing from user.rooms - keeps room in joined count
     emit("user_left", {"username": user.username}, room=str(room_id))
 
 @app.route("/create/rooms", methods=["POST"])
+@login_required
 def create_room():
     data = request.get_json()
     if data is None:
         return jsonify(message="No data provided"), 400
+    
     room_name = data.get("name")
     password = data.get("password")
+    
     if room_name is None or len(room_name) > 30 or len(room_name) < 3:
         return jsonify(message="Room name must be between 3 and 30 characters"), 400
     if password is None or len(password) < 3 or len(password) > 30:
         return jsonify(message="Password must be between 3 and 30 characters"), 400
+    
     existing_room = Room.query.filter_by(name=room_name).first()
     if existing_room:
         return jsonify(message="A room with that name already exists"), 400
+    
     hashed_password = generate_password_hash(password)
     created_at = datetime.now()
+    
     try:
         room = Room(name=room_name, password_hash=hashed_password, created_at=created_at)
         db.session.add(room)
         db.session.commit()
+        log_security_event("ROOM_CREATED", session.get("user_id"), f"room:{room_name}", request.remote_addr)
         return jsonify(message="Room created successfully"), 200
     except Exception as e:
         db.session.rollback()
@@ -369,10 +478,24 @@ def admin_users():
         "email": u.email,
         "is_admin": u.is_admin,
         "messages_sent": u.messages_sent,
-        "rooms_joined": len(u.rooms)
+        "rooms_joined": len(u.rooms),
+        "failed_attempts": u.failed_attempts,
+        "locked_until": u.locked_until.isoformat() if u.locked_until else None
     } for u in users])
 
-# ------------------------- Run -------------------------
+@app.route("/admin/unlock/<int:user_id>", methods=["POST"])
+@admin_required
+def admin_unlock_user(user_id):
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify(message="User not found"), 404
+    user.locked_until = None
+    user.failed_attempts = 0
+    db.session.commit()
+    log_security_event("ADMIN_UNLOCK", session.get("user_id"), f"Unlocked user:{user.username}", request.remote_addr)
+    return jsonify(message=f"User {user.username} unlocked"), 200
+
+# ========== RUN ==========
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     socketio.run(app, host="0.0.0.0", port=port, debug=False)

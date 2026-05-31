@@ -30,6 +30,7 @@ Talisman(app,
         'script-src': ["'self'", "'unsafe-inline'", "https://cdn.socket.io"],
         'style-src': ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         'font-src': ["'self'", "https://fonts.gstatic.com"],
+        'img-src': ["'self'", "data:", "https://cdn-icons-png.flaticon.com"],  # ✅ ADD THIS LINE
     }
 )
 

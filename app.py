@@ -32,7 +32,7 @@ else:
 print("=" * 60 + "\n")
 
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-app.secret_key = os.urandom(24)
+app.secret_key = os.environ.get("SECRET_KEY")
 
 socketio = SocketIO(app, cors_allowed_origins="*", manage_session=True)
 

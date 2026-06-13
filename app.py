@@ -495,7 +495,7 @@ def admin_unlock_user(user_id):
     log_security_event("ADMIN_UNLOCK", session.get("user_id"), f"Unlocked user:{user.username}", request.remote_addr)
     return jsonify(message=f"User {user.username} unlocked"), 200
 
-@app.route("/admin/clear_room/<int:room_id>", methods=["POST"])
+@app.route("/admin/clear_room/<int:room_id>", methods=["GET", "POST"])
 @admin_required
 def clear_room(room_id):
     room = Room.query.get(room_id)
@@ -505,7 +505,7 @@ def clear_room(room_id):
     # Delete all messages in this room
     Messages.query.filter_by(room_id=room_id).delete()
     db.session.commit()
-    return jsonify(message=f"Room '{room.name}' cleared"), 200
+    return f"Room '{room.name}' has been cleared. <a href='/dashboard'>Go back</a>"
 
 # ========== RUN ==========
 if __name__ == "__main__":

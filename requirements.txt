@@ -6,7 +6,7 @@ Flask-Talisman==1.1.0
 Flask-CORS==4.0.0
 Werkzeug==2.3.6
 python-socketio==5.9.0
-eventlet==0.33.3        # 👈 This is critical for the worker
-psycopg2-binary==2.9.7
+eventlet==0.33.3
+psycopg2==2.9.7  # Changed from psycopg2-binary
 gunicorn==21.2.0
 python-dotenv==1.0.0

@@ -7,6 +7,6 @@ Flask-CORS==4.0.0
 Werkzeug==2.3.6
 python-socketio==5.9.0
 eventlet==0.33.3
-psycopg[binary]
+psycopg2-binary
 gunicorn==21.2.0
 python-dotenv==1.0.0
